@@ -7,6 +7,7 @@ With this API, you can query the reputation about various asset types (IP, Domai
 
 ## Example Usage:
 
+```
 $ karma 181.64.192.163
 {'asn': 6147,
  'asname': 'Telefonica del Peru S.A.A.,PE',
@@ -19,6 +20,7 @@ $ karma 181.64.192.163
  'country': 'Peru',
  'rir': 'LACNIC',
  'status': 'blacklisted'}
+```
 
 ## API KEY
 
