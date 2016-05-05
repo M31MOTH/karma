@@ -27,6 +27,10 @@ To use the client, you must have a valid Karma API Key.
 
 You can obtain a free API Key on [https://karma.securetia.com](https://karma.securetia.com)
 
+The API Key can be specified as a parameter "-k" or "--key".
+
+Also, can be defined has an environment variable (KARMA_APIKEY).
+
 ## Dependencies
 
 This client only depends on Python 3.x, doesn't needs any another package.
