@@ -1,0 +1,113 @@
+#!/usr/bin/env python3
+
+'''
+Author: Fabian Martinez Portantier
+Web: https://www.securetia.com
+'''
+
+import argparse
+import ipaddress
+import json
+import os
+import os.path
+import sqlite3
+import sys
+import urllib.request
+from pprint import pprint
+from time import time
+
+VERSION=1.0
+CACHE_TIME=900
+
+def parse_arguments():
+
+    parser = argparse.ArgumentParser(description='Karma Query API Client.')
+
+    parser.add_argument('asset', help='asset to query')
+
+    parser.add_argument('--type', '-t', dest='type', action='store',
+                       default='ip', choices=['ip'], 
+                       help='asset type (any of: ip) default: ip')
+
+    parser.add_argument('--key', '-k', dest='key', action='store',
+                       default=None, 
+                       help='karma API key')
+
+    parser.add_argument('--no-cache', '-n', dest='cache', action='store_false',
+                       default=True,
+                       help='disable caching responses')
+
+    parser.add_argument('--version', '-v', action='version', version='Karma Query API Client %s' % VERSION,
+                       help='show the client version')
+
+    args = parser.parse_args()
+
+    return args
+
+
+args = parse_arguments()
+
+if not args.key:
+    if 'KARMA_APIKEY' in os.environ:
+        args.key = os.environ['KARMA_APIKEY']
+    else:
+        print('Undefined API Key.')
+        print('You can get one for free on https://karma.securetia.com')
+        print('If you already have one, use the "-k" option or set your $KARMA_APIKEY environment variable')
+        sys.exit(1)
+
+
+def validate_ip(ip):
+    try:
+        ipaddress.ip_address(ip)
+    except ValueError:
+        print("ERROR: Invalid IP Address - Please, enter a valid IPv4/IPv6 address")
+        sys.exit(1)
+
+validators = { 'ip': validate_ip }
+
+validators[args.type](args.asset)
+
+headers = {'Accept': 'application/json', 'Authorization': args.key, 'Content-Length': 0}
+data = None
+url = "https://karma.securetia.com/q/%s/%s" % (args.type, args.asset)
+query = "/q/%s/%s" % (args.type, args.asset)
+
+if args.cache:
+    cache_file = os.path.expanduser("~/karma_cache.sqlite")
+
+    conn = sqlite3.connect(cache_file)
+    cursor = conn.cursor()
+    cursor.execute('create table if not exists cache (query text, result text, date int)')
+
+    expire_time = time() - CACHE_TIME
+    cursor.execute("DELETE FROM cache WHERE date < %d" % expire_time)
+
+    cursor.execute("SELECT result FROM cache WHERE query = '%s'" % query)
+    cached = cursor.fetchone()
+
+    if cached:
+        print(json.loads(cached[0]))
+        conn.commit()
+        cursor.close()
+        sys.exit(0)
+
+
+req = urllib.request.Request(url, data, headers)
+
+try:
+    response = urllib.request.urlopen(req)
+except urllib.error.HTTPError as e:
+    print(e)
+    if '401' in str(e):
+        print('Maybe your API Key is invalid')
+    sys.exit(1)
+
+result = json.loads(response.read().decode())
+
+if args.cache:
+    cursor.execute("INSERT INTO cache (query, result, date) VALUES ('%s', '%s', %d)" %(query, json.dumps(result), time()))
+    conn.commit()
+    cursor.close()
+
+pprint(result)
