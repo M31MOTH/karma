@@ -1,5 +1,4 @@
-# karma
-Karma Query API Client
+# Karma Query API Client
 
 Python client to query the Karma API.
 
